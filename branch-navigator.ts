@@ -1,7 +1,7 @@
 /** jj-style conversation tree: /branches [id-prefix]. */
 
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
-import { matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { Input, matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 type Role = "user" | "assistant";
 
@@ -174,11 +174,11 @@ function layout(tree: Tree, currentId: string | undefined, onPath: Set<string>):
 /** Collapse only linear stretches after a fork. Keep graph junctions intact. */
 function compactRows(
 	rows: Row[], tree: Tree, currentId: string | undefined, expanded: Set<string>,
-	forkIds = new Set<string>(),
+	forkIds = new Set<string>(), labels = new Set<string>(),
 ): Row[] {
 	const eligible = new Set<string>();
 	const visit = (node: Node, afterFork: boolean) => {
-		if (afterFork && node.children.length === 1 && !forkIds.has(node.id) && node.id !== currentId && !expanded.has(node.id)) {
+		if (!labels.has(node.id) && afterFork && node.children.length === 1 && !forkIds.has(node.id) && node.id !== currentId && !expanded.has(node.id)) {
 			eligible.add(node.id);
 		}
 		for (const child of node.children) visit(child, afterFork || node.children.length > 1 || forkIds.has(node.id));
@@ -257,6 +257,8 @@ export default function branchNavigator(pi: ExtensionAPI) {
 				let currentId: string | undefined;
 				let cursor = 0;
 				let scroll = 0;
+				let labelInput: Input | undefined;
+				let focused = true;
 				let idQuery: string | null = null; // non-null while in ":" prompt
 				let cache: { width: number; lines: string[] } | undefined;
 
@@ -282,7 +284,8 @@ export default function branchNavigator(pi: ExtensionAPI) {
 							}
 							if (ancestor) forkIds.add(ancestor.id);
 						}
-						rows = compactRows(rows, tree, currentId, expanded, forkIds);
+						const labeled = new Set([...tree.byId.keys()].filter((id) => ctx.sessionManager.getLabel(id)));
+						rows = compactRows(rows, tree, currentId, expanded, forkIds, labeled);
 					}
 					scroll = 0;
 					const want = keepId && tree.byId.has(keepId) ? keepId : currentId;
@@ -343,6 +346,11 @@ export default function branchNavigator(pi: ExtensionAPI) {
 				};
 
 				return {
+					get focused() { return focused; },
+					set focused(value: boolean) {
+						focused = value;
+						if (labelInput) labelInput.focused = value;
+					},
 					render(width: number): string[] {
 						if (cache && cache.width === width) return cache.lines;
 
@@ -377,8 +385,11 @@ export default function branchNavigator(pi: ExtensionAPI) {
 							const label = row.node.role === "user"
 								? `\x1b[33m${roleText}\x1b[0m`
 								: theme.fg("success", roleText);
-							const head = cursorMark + styleGraph(nodeCell, selected) + " " + styleId(row) + "  " + label;
-							const headWidth = visibleWidth(`  ${nodeCell} ${row.node.id}  ${roleText}`);
+							const entryLabel = ctx.sessionManager.getLabel(row.node.id);
+							const labelText = entryLabel ? `[${entryLabel.replace(/[\x00-\x1f\x7f-\x9f]/g, " ")}] ` : "";
+							const coloredLabel = labelText ? `\x1b[${row.node.id === currentId ? 96 : 36}m${labelText}\x1b[0m` : "";
+							const head = cursorMark + styleGraph(nodeCell, selected) + " " + styleId(row) + "  " + coloredLabel + label;
+							const headWidth = visibleWidth(`  ${nodeCell} ${row.node.id}  ${labelText}${roleText}`);
 							let body = truncateToWidth(row.node.text, Math.max(10, width - headWidth - 1));
 							if (selected) body = theme.bold(body);
 							out.push(truncateToWidth(head + body, width));
@@ -394,14 +405,23 @@ export default function branchNavigator(pi: ExtensionAPI) {
 								? theme.fg("muted", "jump to id: ") + theme.fg("warning", idQuery) + theme.fg("dim", "▏")
 								: theme.fg(
 										"dim",
-										"^a assistant · ^o compact/all · : jump id · enter new · e edit · q cancel",
+										"^a assistant · ^o compact/all · Shift+L label · : jump id · enter new · e edit · q cancel",
 									);
-						const lines = [header, ...out.slice(scroll, scroll + height), footer];
+						const lines = labelInput
+							? [header, ...out.slice(scroll, scroll + Math.max(1, height - 2)),
+								theme.fg("muted", "Label — enter saves, empty removes, esc cancels"), ...labelInput.render(width)]
+							: [header, ...out.slice(scroll, scroll + height), footer];
 						cache = { width, lines: lines.map((l) => truncateToWidth(l, width)) };
 						return cache.lines;
 					},
 
 					handleInput(data: string): void {
+						if (labelInput) {
+							labelInput.handleInput(data);
+							invalidate();
+							tui.requestRender();
+							return;
+						}
 						if (idQuery !== null) {
 							if (matchesKey(data, "escape")) idQuery = null;
 							else if (matchesKey(data, "return")) {
@@ -419,6 +439,22 @@ export default function branchNavigator(pi: ExtensionAPI) {
 						// Decode both legacy and kitty keyboard-protocol input.
 						const is = (...keys: string[]) => keys.some((k) => matchesKey(data, k as any));
 
+						if (is("shift+l")) {
+							const row = rows[cursor];
+							if (!row || row.hiddenIds) return;
+							const id = row.node.id;
+							labelInput = new Input();
+							labelInput.focused = focused;
+							labelInput.setValue(ctx.sessionManager.getLabel(id) ?? "");
+							labelInput.onSubmit = (value) => {
+								pi.setLabel(id, value.trim() || undefined);
+								labelInput = undefined;
+								rebuild(id);
+							};
+							labelInput.onEscape = () => { labelInput = undefined; };
+							invalidate();
+							return tui.requestRender();
+						}
 						if (is("j", "down")) return move(1);
 						if (is("k", "up")) return move(-1);
 						if (is("h", "left")) return moveColumn(-1);
