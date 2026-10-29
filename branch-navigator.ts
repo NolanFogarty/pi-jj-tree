@@ -129,7 +129,27 @@ function layout(tree: Tree, currentId: string | undefined, onPath: Set<string>):
 	};
 	tree.roots.forEach((root, i) => walk(root, i === 0 ? 0 : ++nextCol));
 
-	order.reverse();
+	// Emit children before parents, prioritizing the active branch among
+	// available leaves. Reversing DFS put side branches above @ and could
+	// draw an ancestor before a side branch had joined it.
+	const positions = new Map(order.map((item) => [item.node.id, item]));
+	const pending = new Map(order.map(({ node }) => [node.id, node.children.length]));
+	const ready = order.filter(({ node }) => node.children.length === 0);
+	const sorted: typeof order = [];
+	while (ready.length) {
+		ready.sort((a, b) =>
+			Number(b.node.id === currentId) - Number(a.node.id === currentId) ||
+			Number(onPath.has(b.node.id)) - Number(onPath.has(a.node.id)) || a.col - b.col);
+		const item = ready.shift()!;
+		sorted.push(item);
+		const parentId = item.node.parentId;
+		if (parentId && pending.has(parentId)) {
+			const remaining = pending.get(parentId)! - 1;
+			pending.set(parentId, remaining);
+			if (remaining === 0) ready.push(positions.get(parentId)!);
+		}
+	}
+	order.splice(0, order.length, ...sorted);
 
 	const maxCol = nextCol;
 	const prefixLens = uniquePrefixLens(order.map((o) => o.node.id));
