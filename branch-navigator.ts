@@ -311,9 +311,7 @@ export default function branchNavigator(pi: ExtensionAPI) {
 				const styleId = (row: Row) => {
 					const id = row.node.id;
 					const n = row.prefixLen;
-					// Match jj's change_id / working_copy change_id, prefix.bold,
-					// and rest colors. ANSI palette colors follow the terminal's
-					// palette, just like jj, rather than Pi's semantic theme colors.
+					// Use jj's terminal palette, independent of Pi's theme.
 					const color = row.node.id === currentId ? 95 : 35;
 					return `\x1b[1;${color}m${id.slice(0, n)}\x1b[0m` +
 						`\x1b[90m${id.slice(n)}\x1b[0m`;
