@@ -417,21 +417,21 @@ export default function branchNavigator(pi: ExtensionAPI) {
 								? `\x1b[33m${roleText}\x1b[0m`
 								: theme.fg("success", roleText);
 							const entryLabel = ctx.sessionManager.getLabel(row.node.id);
-							const labelText = entryLabel ? `[${entryLabel.replace(/[\x00-\x1f\x7f-\x9f]/g, " ")}] ` : "(empty) ";
+							const labelText = entryLabel ? `[${entryLabel.replace(/[\x00-\x1f\x7f-\x9f]/g, " ")}]` : "";
+							const coloredLabel = entryLabel
+								? ` \x1b[${row.node.id === currentId ? 94 : 34}m${labelText}\x1b[0m` : "";
 							const cyan = row.node.id === currentId ? 96 : 36;
 							const date = `\x1b[${cyan}m${formatTimestamp(row.node.timestamp)}\x1b[0m`;
-							const head = cursorMark + styleGraph(nodeCell, selected) + " " + styleId(row) + " " + label + " " + date;
+							const head = cursorMark + styleGraph(nodeCell, selected) + " " + styleId(row) + " " + label + " " + date + coloredLabel;
 							out.push(truncateToWidth(head, width));
 
 							// Continue graph edges through the description line.
 							const continuation = nodeCell.replace(/[@○◆×]/, row.node.parentId ? "│" : " ");
 							const descriptionPrefix = "  " + styleGraph(continuation, false) + " ";
-							const coloredLabel = entryLabel
-								? `\x1b[${cyan}m${labelText}\x1b[0m` : theme.fg("dim", labelText);
 							let body = truncateToWidth(row.node.text,
-								Math.max(0, width - visibleWidth(descriptionPrefix + labelText)));
+								Math.max(0, width - visibleWidth(descriptionPrefix)));
 							if (selected) body = theme.bold(body);
-							out.push(truncateToWidth(descriptionPrefix + coloredLabel + body, width));
+							out.push(truncateToWidth(descriptionPrefix + body, width));
 						}
 
 						const header =
