@@ -269,7 +269,7 @@ export default function branchNavigator(pi: ExtensionAPI) {
 
 			const action = await ctx.ui.custom<Action>((tui, theme, _kb, done) => {
 				let showAssistant = false;
-				let compact = true;
+				let compact = false;
 				const expanded = new Set<string>();
 				const prefixLens = uniquePrefixLens([...full.byId.keys()]);
 				let tree!: Tree;
