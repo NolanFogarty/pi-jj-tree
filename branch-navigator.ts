@@ -311,7 +311,12 @@ export default function branchNavigator(pi: ExtensionAPI) {
 				const styleId = (row: Row) => {
 					const id = row.node.id;
 					const n = row.prefixLen;
-					return theme.fg("warning", id.slice(0, n)) + theme.fg("dim", id.slice(n));
+					// Match jj's change_id / working_copy change_id, prefix.bold,
+					// and rest colors. ANSI palette colors follow the terminal's
+					// palette, just like jj, rather than Pi's semantic theme colors.
+					const color = row.node.id === currentId ? 95 : 35;
+					return `\x1b[1;${color}m${id.slice(0, n)}\x1b[0m` +
+						`\x1b[90m${id.slice(n)}\x1b[0m`;
 				};
 
 				/** h/l: jump to the leaf (newest row) of the adjacent column. */
@@ -370,7 +375,10 @@ export default function branchNavigator(pi: ExtensionAPI) {
 								continue;
 							}
 							const roleText = row.node.role === "user" ? "user: " : "assistant: ";
-							const label = theme.fg(row.node.role === "user" ? "accent" : "success", roleText);
+							// jj's author/email attribution uses terminal yellow.
+							const label = row.node.role === "user"
+								? `\x1b[33m${roleText}\x1b[0m`
+								: theme.fg("success", roleText);
 							const head = cursorMark + styleGraph(nodeCell, selected) + " " + styleId(row) + "  " + label;
 							const headWidth = visibleWidth(`  ${nodeCell} ${row.node.id}  ${roleText}`);
 							let body = truncateToWidth(row.node.text, Math.max(10, width - headWidth - 1));
