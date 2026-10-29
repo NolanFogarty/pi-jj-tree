@@ -394,7 +394,7 @@ export default function branchNavigator(pi: ExtensionAPI) {
 								? theme.fg("muted", "jump to id: ") + theme.fg("warning", idQuery) + theme.fg("dim", "▏")
 								: theme.fg(
 										"dim",
-										"j/k move · h/l branch · ^f/^b page · ^a assistant · ^e compact/all · : jump id · enter new · e edit · q cancel",
+										"^a assistant · ^o compact/all · : jump id · enter new · e edit · q cancel",
 									);
 						const lines = [header, ...out.slice(scroll, scroll + height), footer];
 						cache = { width, lines: lines.map((l) => truncateToWidth(l, width)) };
@@ -429,7 +429,7 @@ export default function branchNavigator(pi: ExtensionAPI) {
 						if (is("ctrl+u")) return move(-Math.floor(page() / 2));
 						if (is("ctrl+f")) return move(page());
 						if (is("ctrl+b")) return move(-page());
-						if (is("ctrl+e")) {
+						if (is("ctrl+o")) {
 							compact = !compact;
 							if (compact) expanded.clear();
 							rebuild(rows[cursor]?.node.id);
