@@ -11,6 +11,7 @@ interface Node {
 	role: Role;
 	text: string;
 	raw: string;
+	timestamp?: string | number;
 	aborted: boolean;
 	children: Node[];
 }
@@ -45,6 +46,15 @@ function stripMarkdown(md: string): string {
 		.replace(/~~(.+?)~~/g, "$1")
 		.replace(/\s+/g, " ")
 		.trim();
+}
+
+function formatTimestamp(value: string | number | undefined): string {
+	if (value === undefined) return "unknown date";
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return "unknown date";
+	const pad = (n: number) => String(n).padStart(2, "0");
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
+		`${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
 function messageText(entry: any): string {
@@ -82,6 +92,7 @@ function buildTree(ctx: ExtensionCommandContext, roles: Set<Role>): Tree {
 			role: e.message.role,
 			text: stripMarkdown(raw) || "(empty)",
 			raw,
+			timestamp: e.message.timestamp ?? e.timestamp,
 			aborted: e.message.role === "assistant" && !!stop && stop !== "stop" && stop !== "toolUse",
 			children: [],
 		};
@@ -375,8 +386,8 @@ export default function branchNavigator(pi: ExtensionAPI) {
 						if (cache && cache.width === width) return cache.lines;
 
 						if (!rows.length) return [truncateToWidth("No user queries. Ctrl+A shows assistant messages; q closes.", width)];
-						const height = page();
-						const rowLines = rows.map((r) => r.graph.split("\n").length);
+						const height = Math.max(1, page() - (labelInput ? 2 : 0));
+						const rowLines = rows.map((r) => r.graph.split("\n").length + (r.hiddenIds ? 0 : 1));
 						const startLine = (i: number) => rowLines.slice(0, i).reduce((a, b) => a + b, 0);
 						if (startLine(cursor) < scroll) scroll = startLine(cursor);
 						if (startLine(cursor) + rowLines[cursor] > scroll + height)
@@ -400,19 +411,27 @@ export default function branchNavigator(pi: ExtensionAPI) {
 									"  " + theme.fg("muted", `${count} ${noun} hidden — enter to expand`), width));
 								continue;
 							}
-							const roleText = row.node.role === "user" ? "user: " : "assistant: ";
+							const roleText = row.node.role === "user" ? "user" : "assistant";
 							// jj's author/email attribution uses terminal yellow.
 							const label = row.node.role === "user"
 								? `\x1b[33m${roleText}\x1b[0m`
 								: theme.fg("success", roleText);
 							const entryLabel = ctx.sessionManager.getLabel(row.node.id);
-							const labelText = entryLabel ? `[${entryLabel.replace(/[\x00-\x1f\x7f-\x9f]/g, " ")}] ` : "";
-							const coloredLabel = labelText ? `\x1b[${row.node.id === currentId ? 96 : 36}m${labelText}\x1b[0m` : "";
-							const head = cursorMark + styleGraph(nodeCell, selected) + " " + styleId(row) + "  " + coloredLabel + label;
-							const headWidth = visibleWidth(`  ${nodeCell} ${row.node.id}  ${labelText}${roleText}`);
-							let body = truncateToWidth(row.node.text, Math.max(10, width - headWidth - 1));
+							const labelText = entryLabel ? `[${entryLabel.replace(/[\x00-\x1f\x7f-\x9f]/g, " ")}] ` : "(empty) ";
+							const cyan = row.node.id === currentId ? 96 : 36;
+							const date = `\x1b[${cyan}m${formatTimestamp(row.node.timestamp)}\x1b[0m`;
+							const head = cursorMark + styleGraph(nodeCell, selected) + " " + styleId(row) + " " + label + " " + date;
+							out.push(truncateToWidth(head, width));
+
+							// Continue graph edges through the description line.
+							const continuation = nodeCell.replace(/[@○◆×]/, row.node.parentId ? "│" : " ");
+							const descriptionPrefix = "  " + styleGraph(continuation, false) + " ";
+							const coloredLabel = entryLabel
+								? `\x1b[${cyan}m${labelText}\x1b[0m` : theme.fg("dim", labelText);
+							let body = truncateToWidth(row.node.text,
+								Math.max(0, width - visibleWidth(descriptionPrefix + labelText)));
 							if (selected) body = theme.bold(body);
-							out.push(truncateToWidth(head + body, width));
+							out.push(truncateToWidth(descriptionPrefix + coloredLabel + body, width));
 						}
 
 						const header =
@@ -428,7 +447,7 @@ export default function branchNavigator(pi: ExtensionAPI) {
 										"^a assistant · ^o compact/all · Shift+L label · : jump id · enter new · e edit · q cancel",
 									);
 						const lines = labelInput
-							? [header, ...out.slice(scroll, scroll + Math.max(1, height - 2)),
+							? [header, ...out.slice(scroll, scroll + height),
 								theme.fg("muted", "Label — enter saves, empty removes, esc cancels"), ...labelInput.render(width)]
 							: [header, ...out.slice(scroll, scroll + height), footer];
 						cache = { width, lines: lines.map((l) => truncateToWidth(l, width)) };
