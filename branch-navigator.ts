@@ -1,4 +1,4 @@
-/** jj-style conversation tree: /branches [id-prefix]. */
+/** jj-style conversation tree: /jj-tree [id-prefix]. */
 
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { Input, matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
@@ -243,8 +243,8 @@ function compactRows(
 type Action = { kind: "new"; id: string } | { kind: "edit"; node: Node } | null;
 
 export default function branchNavigator(pi: ExtensionAPI) {
-	pi.registerCommand("branches", {
-		description: "jj-style log of conversation branches (/branches [id-prefix])",
+	pi.registerCommand("jj-tree", {
+		description: "jj-style log of conversation branches (/jj-tree [id-prefix])",
 		handler: async (args, ctx) => {
 			const ALL: Set<Role> = new Set(["user", "assistant"]);
 			const full = buildTree(ctx, ALL);
@@ -274,7 +274,7 @@ export default function branchNavigator(pi: ExtensionAPI) {
 			}
 
 			if (ctx.mode !== "tui") {
-				ctx.ui.notify("/branches requires interactive mode", "error");
+				ctx.ui.notify("/jj-tree requires interactive mode", "error");
 				return;
 			}
 
