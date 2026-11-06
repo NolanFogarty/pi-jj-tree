@@ -34,3 +34,5 @@ Run `/reload` in an existing Pi session after installation.
 | `q` / Escape | Close without navigating |
 
 `@` marks the active message, `◆` a root, `○` another message, `×` an interrupted or failed assistant message, and `~` a collapsed stretch.
+
+![Demo](demo/demo.gif)
