@@ -13,6 +13,7 @@ pi install git:github.com/NolanFogarty/pi-jjtree
 Run `/reload` in an existing Pi session after installation. 
 
 ## Demo
+![Demo](demo/screenshot.png)
 ![Demo](demo/demo.gif)
 
 ## Usage
