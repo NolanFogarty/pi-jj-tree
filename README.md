@@ -12,6 +12,9 @@ pi install git:github.com/NolanFogarty/pi-jjtree
 
 Run `/reload` in an existing Pi session after installation. 
 
+## Demo
+![Demo](demo/demo.gif)
+
 ## Usage
 
 ```text
@@ -35,4 +38,3 @@ Run `/reload` in an existing Pi session after installation.
 
 `@` marks the active message, `◆` a root, `○` another message, `×` an interrupted or failed assistant message, and `~` a collapsed stretch.
 
-![Demo](demo/demo.gif)
