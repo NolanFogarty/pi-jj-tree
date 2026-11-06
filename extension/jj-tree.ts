@@ -242,7 +242,7 @@ function compactRows(
 
 type Action = { kind: "new"; id: string } | { kind: "edit"; node: Node } | null;
 
-export default function branchNavigator(pi: ExtensionAPI) {
+export default function jjTree(pi: ExtensionAPI) {
 	pi.registerCommand("jj-tree", {
 		description: "jj-style log of conversation branches (/jj-tree [id-prefix])",
 		handler: async (args, ctx) => {
