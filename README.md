@@ -1,4 +1,4 @@
-# pi-jjtree
+# pi-jj-tree
 
 A jj-style conversation tree navigator for Pi. 
 
@@ -7,7 +7,7 @@ This navigates **Pi conversation history**, not repository history. The `jj` CLI
 ## Install
 
 ```sh
-pi install git:github.com/NolanFogarty/pi-jjtree
+pi install git:github.com/NolanFogarty/pi-jj-tree
 ```
 
 Run `/reload` in an existing Pi session after installation. 
