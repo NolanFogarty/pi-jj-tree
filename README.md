@@ -4,6 +4,8 @@ A jj-style conversation tree navigator for Pi.
 
 This navigates **Pi conversation history**, not repository history. The `jj` CLI is not required.
 
+vim-inspired keybinds :D
+
 ## Install
 
 ```sh
